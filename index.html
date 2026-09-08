@@ -540,35 +540,38 @@ function mostrarResumo(){
 }
 
 function enviarPayload(payload){
-  const status=document.getElementById("statusBox");
+  const status = document.getElementById("statusBox");
 
   if(GOOGLE_APPS_SCRIPT_URL.includes("COLE_AQUI")){
-    status.className="status error";
-    status.style.display="block";
-    status.innerHTML="O formulário está pronto, mas a URL do Apps Script ainda não foi configurada no HTML. Troque a constante GOOGLE_APPS_SCRIPT_URL pela URL do seu Web App.";
+    status.className = "status error";
+    status.style.display = "block";
+    status.innerHTML = "A URL do Apps Script ainda não foi configurada.";
     return;
   }
 
-  const f=document.createElement("form");
-  f.method="POST";
-  f.action=GOOGLE_APPS_SCRIPT_URL;
-  f.target="hidden_iframe";
-  f.style.display="none";
+  status.className = "status";
+  status.style.display = "block";
+  status.innerHTML = "Enviando diagnóstico... aguarde.";
 
-  const input=document.createElement("textarea");
-  input.name="payload";
-  input.value=JSON.stringify(payload);
-  f.appendChild(input);
-
-  document.body.appendChild(f);
-  f.submit();
-  setTimeout(()=>f.remove(),1000);
-
-  status.className="status";
-  status.style.display="block";
-  status.innerHTML="Diagnóstico enviado. Obrigado pela resposta.";
+  fetch(GOOGLE_APPS_SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8"
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(() => {
+    status.className = "status";
+    status.style.display = "block";
+    status.innerHTML = "Diagnóstico enviado. Confira a planilha.";
+  })
+  .catch((err) => {
+    status.className = "status error";
+    status.style.display = "block";
+    status.innerHTML = "Erro ao tentar enviar: " + err;
+  });
 }
-
 function limparFormulario(){
   if(confirm("Limpar todas as respostas?")){
     document.getElementById("diagnosticForm").reset();
