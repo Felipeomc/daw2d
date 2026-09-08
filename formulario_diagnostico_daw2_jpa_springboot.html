@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagnóstico DAW2 - JPA, Spring Boot e PostgreSQL</title>
+<style>
+:root{
+  --bg:#07111f; --panel:#0f172a; --panel2:#14213b; --card:#172238; --text:#f8fafc;
+  --muted:#cbd5e1; --blue:#38bdf8; --green:#22c55e; --yellow:#facc15;
+  --orange:#f97316; --red:#ef4444; --purple:#a855f7; --line:rgba(148,163,184,.28);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:Inter,Arial,Helvetica,sans-serif;
+  background:
+    radial-gradient(circle at 10% 7%,rgba(56,189,248,.16),transparent 24%),
+    radial-gradient(circle at 85% 8%,rgba(168,85,247,.18),transparent 26%),
+    linear-gradient(135deg,#06101f,#0f172a 60%,#1e1b4b);
+  color:var(--text);
+}
+.strip{height:7px;background:linear-gradient(90deg,var(--blue),var(--purple),var(--orange),var(--green))}
+.wrap{width:min(1120px,calc(100% - 24px));margin:18px auto 36px}
+.hero,.panel{
+  background:rgba(15,23,42,.94);
+  border:1px solid var(--line);
+  border-radius:24px;
+  box-shadow:0 18px 50px rgba(0,0,0,.32);
+}
+.hero{padding:22px;margin-bottom:16px;position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;right:-65px;top:-65px;width:190px;height:190px;border-radius:50%;background:rgba(56,189,248,.12)}
+.kicker{
+  display:inline-flex;gap:8px;align-items:center;
+  border:1px solid rgba(56,189,248,.36);
+  background:rgba(56,189,248,.12);
+  color:#bae6fd;border-radius:999px;padding:7px 12px;font-weight:900;font-size:13px
+}
+h1{margin:12px 0 8px;font-size:clamp(30px,5vw,52px);line-height:1;letter-spacing:-1.2px}
+.hero p{margin:0;color:var(--muted);line-height:1.48;max-width:900px}
+.panel{padding:20px;margin-bottom:16px}
+.notice{
+  background:rgba(250,204,21,.10);
+  border:1px solid rgba(250,204,21,.35);
+  color:#fef3c7;border-radius:16px;padding:13px 14px;line-height:1.45;margin:12px 0
+}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+label{display:block;font-weight:900;margin:0 0 7px;color:#e2e8f0}
+input,select,textarea{
+  width:100%;border:1px solid rgba(148,163,184,.35);background:#0b1220;color:white;
+  border-radius:14px;padding:13px 14px;font-size:15px;outline:none
+}
+textarea{min-height:92px;resize:vertical;line-height:1.45}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(56,189,248,.13)}
+.section-title{font-size:clamp(23px,3vw,32px);margin:0 0 6px}
+.section-sub{margin:0 0 14px;color:var(--muted);line-height:1.45}
+.section{
+  margin-top:18px;
+  border-top:1px solid rgba(148,163,184,.18);
+  padding-top:18px
+}
+.concept-card,.question-card{
+  background:rgba(23,34,56,.82);
+  border:1px solid rgba(148,163,184,.22);
+  border-radius:18px;
+  padding:15px;
+  margin:12px 0
+}
+.concept-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
+.concept-title{font-size:17px;font-weight:1000;color:#f8fafc}
+.tag{
+  flex:none;
+  border-radius:999px;padding:5px 9px;font-size:12px;font-weight:900;
+  background:rgba(56,189,248,.13);border:1px solid rgba(56,189,248,.32);color:#bae6fd
+}
+.concept-desc{color:#cbd5e1;line-height:1.45;margin:0 0 12px}
+.scale{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:8px
+}
+.scale label{
+  margin:0;
+  display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:center;
+  min-height:70px;text-align:center;
+  background:#0b1220;border:1px solid rgba(148,163,184,.25);border-radius:14px;
+  padding:8px;cursor:pointer;font-size:12px;color:#dbeafe;font-weight:800
+}
+.scale input{width:auto;margin:0;accent-color:#38bdf8}
+.scale label:hover{border-color:var(--blue)}
+.scale strong{font-size:17px;color:#fff}
+.code{
+  white-space:pre-wrap;
+  background:#020617;
+  border:1px solid rgba(148,163,184,.25);
+  border-radius:14px;
+  padding:12px;
+  color:#dbeafe;
+  font-family:Consolas,Monaco,monospace;
+  font-size:13px;
+  line-height:1.42;
+  overflow:auto;
+  margin:10px 0
+}
+.choice{display:block;margin:8px 0;padding:11px 12px;border-radius:13px;background:#0b1220;border:1px solid rgba(148,163,184,.22);font-weight:700;color:#e2e8f0;cursor:pointer;line-height:1.35}
+.choice input{width:auto;margin-right:8px;accent-color:#38bdf8}
+.choice:hover{border-color:var(--blue)}
+.tools{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tool{display:flex;gap:8px;align-items:center;background:#0b1220;border:1px solid rgba(148,163,184,.22);border-radius:13px;padding:10px;font-weight:800;color:#e2e8f0}
+.tool input{width:auto;accent-color:#22c55e}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.btn{
+  border:none;border-radius:14px;padding:13px 18px;font-size:15px;font-weight:1000;cursor:pointer;color:white;
+  background:linear-gradient(90deg,#0284c7,#7c3aed)
+}
+.btn.green{background:linear-gradient(90deg,#16a34a,#22c55e)}
+.btn.gray{background:#475569}
+.btn.orange{background:linear-gradient(90deg,#f97316,#facc15);color:#111827}
+.status{
+  display:none;margin-top:14px;border-radius:16px;padding:14px;line-height:1.45;
+  border:1px solid rgba(34,197,94,.35);background:rgba(34,197,94,.10);color:#dcfce7
+}
+.status.error{border-color:rgba(239,68,68,.38);background:rgba(239,68,68,.10);color:#fecaca}
+.summary{
+  display:none;margin-top:14px;background:rgba(56,189,248,.10);
+  border:1px solid rgba(56,189,248,.30);border-radius:16px;padding:14px;color:#e0f2fe;line-height:1.45
+}
+.footer{text-align:center;color:#94a3b8;font-size:13px;margin-top:16px;line-height:1.45}
+.hidden{display:none!important}
+@media(max-width:780px){
+  .grid2,.scale,.tools{grid-template-columns:1fr}
+  .panel{padding:16px}
+  .btn{width:100%}
+}
+</style>
+</head>
+<body>
+<div class="strip"></div>
+<div class="wrap">
+  <section class="hero">
+    <span class="kicker">IFPB • DAW2 • Diagnóstico inicial</span>
+    <h1>Formulário de conhecimentos prévios</h1>
+    <p>Este formulário não vale nota. Ele serve para identificar o que a turma já conhece antes da aula prática sobre API Java com Spring Boot, JSON, JPA, Hibernate, PostgreSQL online e organização em camadas.</p>
+  </section>
+
+  <form id="diagnosticForm">
+    <section class="panel">
+      <h2 class="section-title">Identificação</h2>
+      <p class="section-sub">Preencha seus dados para que o professor acompanhe o diagnóstico da turma.</p>
+      <div class="grid2">
+        <div><label for="nome">Nome completo *</label><input id="nome" name="nome" required autocomplete="name"></div>
+        <div><label for="matricula">Matrícula</label><input id="matricula" name="matricula" autocomplete="off"></div>
+        <div><label for="turma">Turma *</label><input id="turma" name="turma" value="DAW2" required></div>
+        <div><label for="email">E-mail institucional ou pessoal</label><input id="email" name="email" type="email" autocomplete="email"></div>
+      </div>
+      <div class="notice"><strong>Escala:</strong> 0 = nunca vi; 1 = já ouvi falar; 2 = entendo a ideia básica; 3 = consigo usar com ajuda; 4 = consigo explicar e aplicar.</div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title">Ferramentas que você já usou</h2>
+      <p class="section-sub">Marque tudo que você já usou pelo menos uma vez.</p>
+      <div class="tools" id="toolsBox"></div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title">Conceitos da aula</h2>
+      <p class="section-sub">Marque seu nível de conhecimento em cada conceito.</p>
+      <div id="conceptsBox"></div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title">Leitura diagnóstica sem pontuação</h2>
+      <p class="section-sub">Estas perguntas não mostram certo ou errado. Elas ajudam a identificar como a turma interpreta estruturas de código, JSON e camadas da aplicação.</p>
+      <div id="diagnosticQuestionsBox"></div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title">Dificuldades e expectativas</h2>
+      <div class="grid2">
+        <div>
+          <label for="maiorDificuldade">Qual parte você acha que pode ser mais difícil?</label>
+          <textarea id="maiorDificuldade" name="maiorDificuldade" placeholder="Ex.: entender JPA, configurar banco, usar terminal, interpretar erro, escrever JSON..."></textarea>
+        </div>
+        <div>
+          <label for="expectativa">O que você espera conseguir fazer ao final da aula?</label>
+          <textarea id="expectativa" name="expectativa" placeholder="Ex.: criar uma API, cadastrar produtos, conectar no PostgreSQL, entender Hibernate..."></textarea>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn green" type="submit">Enviar diagnóstico</button>
+        <button class="btn gray" type="button" onclick="limparFormulario()">Limpar respostas</button>
+        <button class="btn orange" type="button" onclick="mostrarResumo()">Ver resumo antes de enviar</button>
+      </div>
+
+      <div id="summaryBox" class="summary"></div>
+      <div id="statusBox" class="status"></div>
+    </section>
+  </form>
+
+  <div class="footer">
+    Curso: Desenvolvimento e Aplicações Web 2 • Tema: Persistência com JPA, Spring Boot e PostgreSQL.
+  </div>
+</div>
+
+<iframe name="hidden_iframe" style="display:none"></iframe>
+
+<script>
+// Troque pela MESMA URL do Apps Script usada no quiz, caso queira gravar na mesma planilha.
+const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwiN4HOrz-IPAKdaHL6Bk_uEtKDRcFgwADdopwIRqPZBMqAwpUEqL6-9gMqwvotvvsd0/exec";
+
+const TOOL_ITEMS = [
+  "Java", "Spring Boot", "Maven", "GitHub", "Codespaces", "PostgreSQL",
+  "Neon", "JSON", "API REST", "JPA", "Hibernate", "Spring Data JPA",
+  "curl", "Postman/Insomnia", "Terminal Linux"
+];
+
+const SCALE_LABELS = {
+  "0":"Nunca vi",
+  "1":"Já ouvi",
+  "2":"Básico",
+  "3":"Uso com ajuda",
+  "4":"Explico/aplico"
+};
+
+const KNOWLEDGE_ITEMS = [
+  {id:"persistencia", sec:"Persistência e banco", title:"Persistência de dados", desc:"Entender que dados gravados no banco continuam existindo depois que a aplicação é encerrada e reiniciada."},
+  {id:"memoria_vs_banco", sec:"Persistência e banco", title:"Memória vs banco de dados", desc:"Diferenciar variável/objeto em memória de registro salvo em uma tabela."},
+  {id:"postgresql", sec:"Persistência e banco", title:"PostgreSQL", desc:"Entender que o PostgreSQL armazena tabelas, linhas, colunas, chaves e registros."},
+  {id:"neon", sec:"Persistência e banco", title:"Neon", desc:"Entender o Neon como ambiente online usado para hospedar um banco PostgreSQL na nuvem."},
+  {id:"objeto_tabela", sec:"Persistência e banco", title:"Objeto Java e tabela", desc:"Relacionar classe/objeto Produto com tabela produtos e seus campos."},
+
+  {id:"json_estrutura", sec:"JSON e HTTP", title:"Estrutura JSON", desc:"Identificar chaves, valores, textos, números e booleanos em um JSON."},
+  {id:"json_array", sec:"JSON e HTTP", title:"Array JSON", desc:"Reconhecer uma lista de produtos retornada por GET /produtos."},
+  {id:"http", sec:"JSON e HTTP", title:"Requisição HTTP", desc:"Entender a ideia de cliente enviando uma requisição para a API."},
+  {id:"post_get", sec:"JSON e HTTP", title:"POST e GET", desc:"Diferenciar POST para cadastrar de GET para consultar dados."},
+  {id:"endpoint", sec:"JSON e HTTP", title:"Endpoint", desc:"Entender endereços como /produtos e /produtos/{id}."},
+  {id:"content_type", sec:"JSON e HTTP", title:"Content-Type: application/json", desc:"Entender que esse cabeçalho informa que o corpo da requisição está em JSON."},
+
+  {id:"spring_boot", sec:"Spring e camadas", title:"Spring Boot", desc:"Entender que ele configura e executa a aplicação Java com menos configuração manual."},
+  {id:"controller", sec:"Spring e camadas", title:"Controller REST", desc:"Entender que o Controller recebe requisições HTTP e responde em JSON."},
+  {id:"request_body", sec:"Spring e camadas", title:"@RequestBody", desc:"Entender que converte o JSON recebido em um objeto Java."},
+  {id:"path_variable", sec:"Spring e camadas", title:"@PathVariable", desc:"Entender que captura valores presentes no endereço, como o ID em /produtos/4."},
+  {id:"service", sec:"Spring e camadas", title:"Service", desc:"Entender que a camada Service organiza regras e coordena operações."},
+  {id:"repository", sec:"Spring e camadas", title:"Repository", desc:"Entender que a camada Repository acessa dados sem precisar escrever tudo manualmente."},
+  {id:"fluxo_camadas", sec:"Spring e camadas", title:"Fluxo em camadas", desc:"Entender o caminho HTTP/JSON → Controller → Service → Repository → Hibernate → PostgreSQL."},
+
+  {id:"orm", sec:"JPA, Hibernate e mapeamento", title:"ORM", desc:"Entender Object-Relational Mapping como a técnica que liga objetos Java a linhas de tabela."},
+  {id:"jpa", sec:"JPA, Hibernate e mapeamento", title:"JPA", desc:"Entender JPA como especificação que define regras, interfaces e anotações de persistência."},
+  {id:"hibernate", sec:"JPA, Hibernate e mapeamento", title:"Hibernate", desc:"Entender Hibernate como implementação que interpreta o mapeamento e gera/executa SQL."},
+  {id:"spring_data_jpa", sec:"JPA, Hibernate e mapeamento", title:"Spring Data JPA", desc:"Entender que ele cria repositórios e oferece métodos como save, findAll, findById e delete."},
+  {id:"jdbc", sec:"JPA, Hibernate e mapeamento", title:"Driver JDBC", desc:"Entender que ele permite a comunicação entre Java e PostgreSQL."},
+  {id:"entity", sec:"JPA, Hibernate e mapeamento", title:"@Entity e @Table", desc:"Entender que @Entity marca a classe como entidade JPA e @Table define o nome da tabela."},
+  {id:"id_generated", sec:"JPA, Hibernate e mapeamento", title:"@Id e @GeneratedValue", desc:"Entender que @Id marca a chave primária e o PostgreSQL pode gerar o identificador."},
+  {id:"bigdecimal", sec:"JPA, Hibernate e mapeamento", title:"BigDecimal", desc:"Entender por que BigDecimal é usado para valores monetários em vez de double."},
+  {id:"jparepository", sec:"JPA, Hibernate e mapeamento", title:"JpaRepository<Produto, Long>", desc:"Entender que Produto é a entidade e Long é o tipo do identificador."},
+
+  {id:"spring_initializr", sec:"Ambiente e execução", title:"Spring Initializr", desc:"Entender a criação do projeto com Maven, Java 17, Spring Web, Spring Data JPA e PostgreSQL Driver."},
+  {id:"maven", sec:"Ambiente e execução", title:"Maven", desc:"Entender comandos como mvn compile e mvn spring-boot:run."},
+  {id:"github_codespaces", sec:"Ambiente e execução", title:"GitHub e Codespaces", desc:"Entender que o projeto será versionado no GitHub e executado no Codespaces."},
+  {id:"env_vars", sec:"Ambiente e execução", title:"Variáveis de ambiente", desc:"Entender DB_URL, DB_USER e DB_PASSWORD sem colocar senha no código."},
+  {id:"application_properties", sec:"Ambiente e execução", title:"application.properties", desc:"Entender configurações como datasource, ddl-auto=update, show-sql e format_sql."},
+  {id:"sql_hibernate", sec:"Ambiente e execução", title:"SQL gerado pelo Hibernate", desc:"Conseguir observar INSERT e SELECT aparecendo no terminal."},
+  {id:"diagnostico_erros", sec:"Ambiente e execução", title:"Diagnóstico de erros", desc:"Interpretar BUILD FAILURE, 404, erro após alterar código e problemas de conexão."}
+];
+
+const DIAGNOSTIC_QUESTIONS = [
+  {
+    id:"dq_json_objeto",
+    title:"JSON de cadastro",
+    text:"Ao ver o JSON abaixo, o que você consegue reconhecer melhor?",
+    code:'{\n  "nome": "Teclado",\n  "preco": 150.00,\n  "quantidadeEstoque": 8,\n  "ativo": true\n}',
+    options:[
+      "Reconheço pares chave/valor e tipos como texto, número e booleano.",
+      "Reconheço parcialmente, mas ainda confundo a estrutura.",
+      "Sei apenas que parece código, mas não entendo os campos.",
+      "Nunca vi JSON ou não sei interpretar."
+    ]
+  },
+  {
+    id:"dq_array_json",
+    title:"Resposta de listagem",
+    text:"Uma resposta de GET /produtos pode vir assim:",
+    code:'[\n  {"id":1,"nome":"Teclado","preco":150.00},\n  {"id":2,"nome":"Mouse","preco":80.00}\n]',
+    options:[
+      "Entendo que é um array/lista com dois objetos.",
+      "Entendo que tem produtos, mas não sei explicar array.",
+      "Acho que é uma tabela do banco escrita diretamente.",
+      "Não sei interpretar esse retorno."
+    ]
+  },
+  {
+    id:"dq_jpa_hibernate",
+    title:"JPA, Hibernate e Spring Data JPA",
+    text:"Qual frase mais se aproxima do que você já entende?",
+    code:"",
+    options:[
+      "JPA define regras; Hibernate implementa; Spring Data JPA simplifica repositórios.",
+      "JPA, Hibernate e Spring Data JPA são exatamente a mesma coisa.",
+      "Hibernate é o banco de dados e PostgreSQL é a linguagem Java.",
+      "Ainda não sei diferenciar esses nomes."
+    ]
+  },
+  {
+    id:"dq_entidade",
+    title:"Entidade JPA",
+    text:"Observe a estrutura:",
+    code:'@Entity\n@Table(name = "produtos")\npublic class Produto {\n  @Id\n  @GeneratedValue(strategy = GenerationType.IDENTITY)\n  private Long id;\n}',
+    options:[
+      "Entendo que a classe Produto será mapeada para a tabela produtos.",
+      "Entendo só que é uma classe Java, mas não as anotações.",
+      "Acho que isso é um comando SQL.",
+      "Não reconheço essa estrutura."
+    ]
+  },
+  {
+    id:"dq_repository",
+    title:"Repository",
+    text:"Observe o código:",
+    code:'public interface ProdutoRepository\n    extends JpaRepository<Produto, Long> {\n}',
+    options:[
+      "Entendo que Produto é a entidade e Long é o tipo do ID.",
+      "Entendo que é uma interface, mas não sei o papel do JpaRepository.",
+      "Acho que faltam todos os métodos e por isso não funciona.",
+      "Não reconheço essa estrutura."
+    ]
+  },
+  {
+    id:"dq_controller",
+    title:"Controller e @RequestBody",
+    text:"Observe o trecho:",
+    code:'@PostMapping\n@ResponseStatus(HttpStatus.CREATED)\npublic Produto criar(@RequestBody Produto produto) {\n  return service.criar(produto);\n}',
+    options:[
+      "Entendo que POST cadastra e @RequestBody transforma JSON em Produto.",
+      "Entendo que é Java, mas não sei o que POST faz.",
+      "Acho que isso lista todos os produtos no navegador.",
+      "Não reconheço esse tipo de código."
+    ]
+  },
+  {
+    id:"dq_neon_senha",
+    title:"Neon e segurança",
+    text:"Na aula, a senha do banco não deve ficar escrita no GitHub.",
+    code:"DB_URL, DB_USER e DB_PASSWORD",
+    options:[
+      "Entendo a ideia de usar variáveis de ambiente para proteger credenciais.",
+      "Já ouvi falar, mas ainda não sei configurar.",
+      "Acho que a senha pode ficar no código sem problema.",
+      "Não conheço esse assunto."
+    ]
+  },
+  {
+    id:"dq_fluxo",
+    title:"Caminho dos dados",
+    text:"Qual fluxo você consegue explicar melhor?",
+    code:"HTTP / JSON → Controller → Service → Repository → Hibernate → PostgreSQL",
+    options:[
+      "Consigo explicar a função de cada etapa do fluxo.",
+      "Entendo algumas etapas, mas ainda me perco.",
+      "Só conheço JSON e banco, mas não as camadas.",
+      "Não sei explicar esse fluxo."
+    ]
+  },
+  {
+    id:"dq_erros",
+    title:"Diagnóstico de erros",
+    text:"Se a aplicação abrir / no navegador e aparecer 404, o que você acha?",
+    code:"Endpoints criados: /produtos e /produtos/{id}",
+    options:[
+      "Pode estar normal, pois não existe endpoint para a raiz /.",
+      "Com certeza o servidor falhou.",
+      "Significa que o PostgreSQL apagou todos os dados.",
+      "Não sei avaliar."
+    ]
+  }
+];
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+
+function renderTools(){
+  const box=document.getElementById("toolsBox");
+  box.innerHTML=TOOL_ITEMS.map(t=>`<label class="tool"><input type="checkbox" name="ferramentas" value="${escapeHtml(t)}"> ${escapeHtml(t)}</label>`).join("");
+}
+
+function renderConcepts(){
+  const box=document.getElementById("conceptsBox");
+  let current="";
+  let html="";
+  KNOWLEDGE_ITEMS.forEach(item=>{
+    if(item.sec!==current){
+      if(current) html += `</div>`;
+      current=item.sec;
+      html += `<div class="section"><h3>${escapeHtml(current)}</h3>`;
+    }
+    html += `
+      <div class="concept-card">
+        <div class="concept-head">
+          <div class="concept-title">${escapeHtml(item.title)}</div>
+          <span class="tag">${escapeHtml(item.sec)}</span>
+        </div>
+        <p class="concept-desc">${escapeHtml(item.desc)}</p>
+        <div class="scale" role="radiogroup" aria-label="${escapeHtml(item.title)}">
+          ${[0,1,2,3,4].map(v=>`
+            <label>
+              <input type="radio" name="${item.id}" value="${v}" required>
+              <strong>${v}</strong>
+              <span>${SCALE_LABELS[v]}</span>
+            </label>
+          `).join("")}
+        </div>
+      </div>
+    `;
+  });
+  html += `</div>`;
+  box.innerHTML=html;
+}
+
+function renderDiagnosticQuestions(){
+  const box=document.getElementById("diagnosticQuestionsBox");
+  box.innerHTML=DIAGNOSTIC_QUESTIONS.map((q,i)=>`
+    <div class="question-card">
+      <div class="concept-head">
+        <div class="concept-title">${i+1}. ${escapeHtml(q.title)}</div>
+        <span class="tag">sem pontuação</span>
+      </div>
+      <p class="concept-desc">${escapeHtml(q.text)}</p>
+      ${q.code ? `<pre class="code">${escapeHtml(q.code)}</pre>` : ""}
+      ${q.options.map((op,j)=>`
+        <label class="choice">
+          <input type="radio" name="${q.id}" value="${escapeHtml(op)}" required>
+          ${String.fromCharCode(65+j)}) ${escapeHtml(op)}
+        </label>
+      `).join("")}
+    </div>
+  `).join("");
+}
+
+function getCheckedValues(name){
+  return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(x=>x.value);
+}
+
+function buildPayload(){
+  const fd = new FormData(document.getElementById("diagnosticForm"));
+  const conhecimento = {};
+  const conhecimentoLegivel = {};
+  KNOWLEDGE_ITEMS.forEach(item=>{
+    const value = fd.get(item.id) || "";
+    conhecimento[item.id] = value;
+    conhecimentoLegivel[item.title] = value ? `${value} - ${SCALE_LABELS[value]}` : "";
+  });
+
+  const diagnosticas = {};
+  DIAGNOSTIC_QUESTIONS.forEach(q=>{
+    diagnosticas[q.title] = fd.get(q.id) || "";
+  });
+
+  const counts = {"0":0,"1":0,"2":0,"3":0,"4":0};
+  Object.values(conhecimento).forEach(v=>{ if(counts[v]!==undefined) counts[v]++; });
+  const media = Object.values(conhecimento).reduce((s,v)=>s+(Number(v)||0),0) / KNOWLEDGE_ITEMS.length;
+
+  const payload = {
+    tipoFormulario: "diagnostico_daw2_jpa_spring_boot",
+    abaDestino: "Diagnostico DAW2 - JPA",
+    curso: "Desenvolvimento e Aplicações Web 2",
+    tema: "Persistência com JPA, Spring Boot e PostgreSQL",
+    anoEscolar: "DAW2",
+    nivel: "Diagnóstico JPA Spring Boot",
+    nome: fd.get("nome") || "",
+    matricula: fd.get("matricula") || "",
+    turma: fd.get("turma") || "",
+    email: fd.get("email") || "",
+    ferramentas: getCheckedValues("ferramentas"),
+    conhecimento,
+    conhecimentoLegivel,
+    diagnosticas,
+    maiorDificuldade: fd.get("maiorDificuldade") || "",
+    expectativa: fd.get("expectativa") || "",
+    resumo: {
+      mediaConhecimento: Number(media.toFixed(2)),
+      nuncaVi: counts["0"],
+      jaOuvi: counts["1"],
+      basico: counts["2"],
+      usoComAjuda: counts["3"],
+      explicoAplico: counts["4"],
+      totalConceitos: KNOWLEDGE_ITEMS.length
+    },
+    dataHora: new Date().toLocaleString("pt-BR")
+  };
+
+  payload.detalhes = gerarDetalhesTexto(payload);
+  return payload;
+}
+
+function gerarDetalhesTexto(p){
+  const linhas = [];
+  linhas.push(`Diagnóstico DAW2 - JPA/Spring Boot`);
+  linhas.push(`Aluno: ${p.nome}`);
+  linhas.push(`Matrícula: ${p.matricula}`);
+  linhas.push(`Turma: ${p.turma}`);
+  linhas.push(`Email: ${p.email}`);
+  linhas.push(`Data/hora: ${p.dataHora}`);
+  linhas.push(`Ferramentas: ${p.ferramentas.join(", ") || "Nenhuma marcada"}`);
+  linhas.push("");
+  linhas.push("Resumo da escala:");
+  linhas.push(`Média: ${p.resumo.mediaConhecimento}`);
+  linhas.push(`0 Nunca vi: ${p.resumo.nuncaVi}`);
+  linhas.push(`1 Já ouvi: ${p.resumo.jaOuvi}`);
+  linhas.push(`2 Básico: ${p.resumo.basico}`);
+  linhas.push(`3 Uso com ajuda: ${p.resumo.usoComAjuda}`);
+  linhas.push(`4 Explico/aplico: ${p.resumo.explicoAplico}`);
+  linhas.push("");
+  linhas.push("Conhecimentos por conceito:");
+  Object.entries(p.conhecimentoLegivel).forEach(([k,v])=>linhas.push(`- ${k}: ${v}`));
+  linhas.push("");
+  linhas.push("Perguntas diagnósticas:");
+  Object.entries(p.diagnosticas).forEach(([k,v])=>linhas.push(`- ${k}: ${v}`));
+  linhas.push("");
+  linhas.push(`Maior dificuldade: ${p.maiorDificuldade}`);
+  linhas.push(`Expectativa: ${p.expectativa}`);
+  return linhas.join("\n");
+}
+
+function mostrarResumo(){
+  const form=document.getElementById("diagnosticForm");
+  const box=document.getElementById("summaryBox");
+  if(!form.reportValidity()) return;
+  const p=buildPayload();
+  box.style.display="block";
+  box.innerHTML = `
+    <strong>Resumo antes do envio</strong><br>
+    Aluno: ${escapeHtml(p.nome)}<br>
+    Turma: ${escapeHtml(p.turma)}<br>
+    Ferramentas marcadas: ${escapeHtml(p.ferramentas.join(", ") || "nenhuma")}<br>
+    Média declarada de conhecimento: ${p.resumo.mediaConhecimento} em uma escala de 0 a 4.<br>
+    Distribuição: 0=${p.resumo.nuncaVi}, 1=${p.resumo.jaOuvi}, 2=${p.resumo.basico}, 3=${p.resumo.usoComAjuda}, 4=${p.resumo.explicoAplico}.
+  `;
+}
+
+function enviarPayload(payload){
+  const status=document.getElementById("statusBox");
+
+  if(GOOGLE_APPS_SCRIPT_URL.includes("COLE_AQUI")){
+    status.className="status error";
+    status.style.display="block";
+    status.innerHTML="O formulário está pronto, mas a URL do Apps Script ainda não foi configurada no HTML. Troque a constante GOOGLE_APPS_SCRIPT_URL pela URL do seu Web App.";
+    return;
+  }
+
+  const f=document.createElement("form");
+  f.method="POST";
+  f.action=GOOGLE_APPS_SCRIPT_URL;
+  f.target="hidden_iframe";
+  f.style.display="none";
+
+  const input=document.createElement("textarea");
+  input.name="payload";
+  input.value=JSON.stringify(payload);
+  f.appendChild(input);
+
+  document.body.appendChild(f);
+  f.submit();
+  setTimeout(()=>f.remove(),1000);
+
+  status.className="status";
+  status.style.display="block";
+  status.innerHTML="Diagnóstico enviado. Obrigado pela resposta.";
+}
+
+function limparFormulario(){
+  if(confirm("Limpar todas as respostas?")){
+    document.getElementById("diagnosticForm").reset();
+    document.getElementById("summaryBox").style.display="none";
+    document.getElementById("statusBox").style.display="none";
+  }
+}
+
+document.getElementById("diagnosticForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  if(!this.reportValidity()) return;
+  const payload=buildPayload();
+  mostrarResumo();
+  enviarPayload(payload);
+});
+
+renderTools();
+renderConcepts();
+renderDiagnosticQuestions();
+</script>
+</body>
+</html>
